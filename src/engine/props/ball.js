@@ -12,16 +12,18 @@ class Paddle extends BaseProp {
   * @returns
   */
   constructor (field) {
-    super(new Primitives.Vector2D(0, 0), 3, 3)
+    super(
+      new Primitives.Vector2D(0, 0),
+      3,
+      3,
+      {
+        fg: 'red',
+        bg: 'red'
+      })
 
     this.move(new Primitives.Vector2D(
       (field._size.x / 2) - (this._size.x / 2),
       (field._size.y / 2) - (this._size.y / 2)))
-
-    this.blessedBox.style = {
-      fg: 'red',
-      bg: 'red'
-    }
   }
 }
 

@@ -7,25 +7,21 @@ class Field extends BaseProp {
   get playableHeight () { return this._size.y - 2 }
 
   constructor (width, height) {
-    super(new Primitives.Vector2D(0, 0), width, height)
-
-    this._blessedBox = blessed.box({
-      left: this._position.x,
-      top: this._position.y,
-      width: this._size.x,
-      height: this._size.y,
-      border: {
-        type: 'line'
-      },
-      style: {
+    super(
+      new Primitives.Vector2D(0, 0),
+      width,
+      height,
+      {
         fg: 'white',
         bg: 'black',
         border: {
           fg: 'white',
           bg: 'black'
         }
-      }
-    })
+      },
+      {
+        type: 'line'
+      })
   }
 }
 

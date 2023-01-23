@@ -28,13 +28,15 @@ scene.addToBlessedScreen(screen)
 screen.key(['escape', 'q', 'C-c'], (ch, key) => process.exit(0))
 
 screen.key(['up'], (cd, key) => {
-  paddlePlayer.top -= 1
-  screen.render()
+  const position = Vector2D.fromVector2D(paddlePlayer.position)
+  position.y -= 2
+  paddlePlayer.move(position)
 })
 
 screen.key(['down'], (cd, key) => {
-  paddlePlayer.top += 1
-  screen.render()
+  const position = Vector2D.fromVector2D(paddlePlayer.position)
+  position.y += 2
+  paddlePlayer.move(position)
 })
 
 // This isn't complete yet; but proves we can bounce the ball back and
@@ -49,20 +51,22 @@ const gameLoop = () => {
   const dtSeconds = dtMillis / 1000
 
   let ballDx = ballVel * dtSeconds
-  const potentialBallLeft = ball._position.x + ballDx
-  const potentialBallRight = ball._position.x + ballDx + ball._size.x
+  let ballLeft = ball.position.x + ballDx
+  const ballRight = ballLeft + (ball.size.x - 1)
 
-  if (potentialBallLeft < 0 && ballVel < 0) {
+  if (ballLeft < 0 && ballVel < 0) {
     ballVel = 32
     ballDx = ballVel * dtSeconds
-  } else if (potentialBallRight > field._size.x && ballVel > 0) {
+    ballLeft = 0
+  } else if (ballRight > field.playableWidth && ballVel > 0) {
     ballVel = -32
     ballDx = ballVel * dtSeconds
+    ballLeft = field.playableWidth - ball.size.x
   }
 
   ball.move(new Vector2D(
-    ball._position.x + ballDx,
-    ball._position.y))
+    ballLeft,
+    ball.position.y))
 
   screen.render()
 
