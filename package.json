@@ -1,0 +1,15 @@
+{
+  "name": "node-pong",
+  "version": "0.1.0",
+  "description": "Pong-style game written in Node",
+  "main": "src/app.js",
+  "scripts": {},
+  "author": "Jake Brandt",
+  "license": "MIT",
+  "devDependencies": {
+    "blessed": "^0.1.81",
+    "standard": "^17.0.0"
+  },
+  "dependencies": { 
+  }
+}
