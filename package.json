@@ -7,9 +7,10 @@
   "author": "Jake Brandt",
   "license": "MIT",
   "devDependencies": {
+    "azure-iot-device": "^1.18.1",
+    "azure-iot-device-mqtt": "^1.16.1",
     "blessed": "^0.1.81",
+    "rxjs": "^7.8.0",
     "standard": "^17.0.0"
-  },
-  "dependencies": { 
   }
 }
