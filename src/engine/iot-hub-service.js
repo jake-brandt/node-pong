@@ -30,6 +30,9 @@ class IotHubService {
     })
   }
 
+  /**
+   * @param {string} messageAsJson
+   */
   sendMessage (messageAsJson) {
     const message = new Message(messageAsJson)
     this.#client.sendEvent(message, () => {})
@@ -45,6 +48,9 @@ class IotHubService {
     })
   }
 
+  /**
+   * @param {ArrayBuffer} msg
+   */
   #onMessageReceived (msg) {
     this.inboundMessages.next(msg.data.toString())
     this.#client.complete(msg, () => {})
