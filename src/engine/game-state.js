@@ -4,16 +4,28 @@ const Scene = require('./scene')
 const Props = require('./props')
 const Constants = require('./constants')
 const { Vector2D } = require('./primitives')
+const IotHubService = require('./iot-hub-service')
 /* eslint-enable */
 
 class GameState {
-  #gameInterval = null
+  #paused = true
   #lastIterationMillis = Date.now()
+
+  /** @type {IotHubService} */
+  #iotHubService = null
+
+  /** @type {blessed.Screen} */
   #blessedScreen = null
+  /** @type {Scene} */
   #scene = null
+
+  /** @type {Props.Field} */
   #field = null
+  /** @type {Props.Paddle} */
   #paddlePlayer = null
+  /** @type {Props.Paddle} */
   #paddleCpu = null
+  /** @type {Props.Ball} */
   #ball = null
 
   #pendingActions = {
@@ -28,10 +40,36 @@ class GameState {
     ballY: 0
   }
 
+  #iotHubState = {
+    // Most recent time (UTC millis past epoch)
+    time1: null,
+    // Previous time (UTC millis past epoch)
+    time2: null,
+    // Ball most recent X, Y
+    bX1: null,
+    bY1: null,
+    // Ball previous X, Y
+    bX2: null,
+    bY2: null,
+    // Player paddle most recent X
+    pX1: null,
+    // Player paddle previous X
+    pX2: null,
+    // CPU paddle most recent X
+    cX1: null,
+    // CPU paddle previous X
+    cX2: null,
+    // Constant, paddle size
+    paddleSize: null,
+    // Constant, ball size
+    ballSizeX: null,
+    ballSizeY: null
+  }
+
   /**
    * @param {blessed.Screen} blessedScreen
    */
-  constructor (blessedScreen) {
+  constructor (blessedScreen, iotHubService) {
     this.#scene = new Scene(blessedScreen.width, blessedScreen.height)
     this.#field = new Props.Field(this.#scene.screenWidth, this.#scene.screenHeight)
     this.#paddlePlayer = new Props.Paddle(this.#field, Constants.LOCATION_LEFT)
@@ -44,6 +82,8 @@ class GameState {
     this.#scene.addProp(this.#ball, this.#field)
 
     this.#blessedScreen = blessedScreen
+
+    this.#iotHubService = iotHubService
   }
 
   start () {
@@ -59,12 +99,13 @@ class GameState {
   }
 
   pause () {
-    clearInterval(this.#gameInterval)
+    this.#paused = true
   }
 
   resume () {
+    this.#paused = false
     this.#lastIterationMillis = Date.now()
-    this.#gameInterval = setInterval(this.#gameLoop.bind(this), 1000 / 30)
+    setTimeout(this.#gameLoop.bind(this), 1000 / 30)
   }
 
   /**
@@ -86,17 +127,56 @@ class GameState {
     const dtMillis = thisIterationMillis - this.#lastIterationMillis
     const dtSeconds = dtMillis / 1000
 
-    this.#stepBallPhysics(dtSeconds)
-    this.#stepPaddlePhysics(dtSeconds, true)
-    this.#stepPaddlePhysics(dtSeconds, false)
+    // Determine time since last msg sent to IoT hub
+    const dtMillisIoTHub = this.#iotHubState.time1
+      ? thisIterationMillis - this.#iotHubState.time1
+      : Number.MAX_SAFE_INTEGER
+
+    // Update telemetry only after a certain period of time
+    const updateTelemetry = dtMillisIoTHub && dtMillisIoTHub >= 3000
+
+    if (updateTelemetry) {
+      // Make sure we send sizes; and don't forget to transpose X/Y
+      this.#iotHubState.ballSizeX = this.#ball.size.y / this.#field.playableHeight
+      this.#iotHubState.ballSizeY = this.#ball.size.x / this.#field.playableWidth
+      this.#iotHubState.paddleSize = this.#paddlePlayer.size.y / this.#field.playableHeight
+
+      // Move previous state to "old" state
+      this.#iotHubState.time2 = this.#iotHubState.time1
+      this.#iotHubState.time1 = thisIterationMillis
+      this.#iotHubState.bX2 = this.#iotHubState.bX1
+      this.#iotHubState.bY2 = this.#iotHubState.bY1
+      this.#iotHubState.pX2 = this.#iotHubState.pX1
+      this.#iotHubState.cX2 = this.#iotHubState.cX1
+    }
+
+    this.#stepBallPhysics(dtSeconds, updateTelemetry)
+    this.#stepPaddlePhysics(dtSeconds, true, updateTelemetry)
+    this.#stepPaddlePhysics(dtSeconds, false, updateTelemetry)
     this.#blessedScreen.render()
     this.#lastIterationMillis = thisIterationMillis
+
+    // If we have a previous state then we can send telemetry to IoT Hub,
+    // if not, we'll send it next time through here.
+
+    if (this.#iotHubState.time2 && updateTelemetry) {
+      this.#iotHubService.sendMessage(JSON.stringify(this.#iotHubState))
+    }
+
+    // Call this function again as close to 30fps as possible, so account
+    // for the time spent on above tasks.
+
+    if (!this.#paused) {
+      const iterationEndMillis = Date.now()
+      setTimeout(this.#gameLoop.bind(this), (1000 / 30) - (iterationEndMillis - thisIterationMillis))
+    }
   }
 
   /**
    * @param {Number} dtSeconds
+   * @param {boolean} updateTelemetry
    */
-  #stepBallPhysics (dtSeconds) {
+  #stepBallPhysics (dtSeconds, updateTelemetry) {
     let ballDx = this.#velocities.ballX * dtSeconds
     let ballDy = this.#velocities.ballY * dtSeconds
     let ballLeft = this.#ball.position.x + ballDx
@@ -124,14 +204,22 @@ class GameState {
       ballTop = this.#field.playableHeight - this.#ball.size.y
     }
 
+    if (updateTelemetry) {
+      // Normalize for IoT Hub, transpose X and Y (IoT Hub will expect Y to be "downfield")
+      // Store in IoT state
+      this.#iotHubState.bX1 = (ballTop + (this.#ball.size.y / 2)) / this.#field.playableHeight
+      this.#iotHubState.bY1 = (ballLeft + (this.#ball.size.x / 2)) / this.#field.playableWidth
+    }
+
     this.#ball.move(new Vector2D(ballLeft, ballTop))
   }
 
   /**
    * @param {Number} dtSeconds
    * @param {boolean} isPlayer
+   * @param {boolean} updateTelemetry
    */
-  #stepPaddlePhysics (dtSeconds, isPlayer) {
+  #stepPaddlePhysics (dtSeconds, isPlayer, updateTelemetry) {
     /** @type {Props.Paddle} */
     const paddle = isPlayer ? this.#paddlePlayer : this.#paddleCpu
     let paddleVelocityY = isPlayer ? this.#velocities.playerY : this.#velocities.cpuY
@@ -175,10 +263,22 @@ class GameState {
 
     paddle.move(new Vector2D(paddle.position.x, paddleTop))
 
+    // Normalize for IoT Hub, transpose X and Y (IoT Hub will expect Y to be "downfield")
+    // Store in IoT state
+    const normalizedX = (paddleTop + (paddle.size.y / 2)) / this.#field.playableHeight
+
     if (isPlayer) {
       this.#velocities.playerY = paddleVelocityY
+      if (updateTelemetry) {
+        // Remember, X/Y are transposed in our hub implemntation
+        this.#iotHubState.pX1 = normalizedX
+      }
     } else {
       this.#velocities.cpuY = paddleVelocityY
+      if (updateTelemetry) {
+        // Remember, X/Y are transposed in our hub implemntation
+        this.#iotHubState.cX1 = normalizedX
+      }
     }
   }
 }

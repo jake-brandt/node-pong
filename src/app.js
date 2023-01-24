@@ -8,19 +8,19 @@ const screen = blessed.screen({
   title: 'A Game Like Pong'
 })
 
-const gameState = new GameState(screen)
+const iotHubService = new IotHubService()
+iotHubService.connect()
+
+const gameState = new GameState(screen, iotHubService)
 
 // Quit on Escape, q, or Control-C.
-screen.key(['escape', 'q', 'C-c'], (ch, key) => process.exit(0))
-screen.key(['up'], (cd, key) => { gameState.requestPaddleAction(true, Constants.DIRECTION_UP) })
-screen.key(['down'], (cd, key) => { gameState.requestPaddleAction(true, Constants.DIRECTION_DOWN) })
-screen.key(['enter'], (cd, key) => { testMsg() })
+screen.key(['escape', 'q', 'C-c'], () => { process.exit(0) })
+screen.key(['up'], () => { gameState.requestPaddleAction(true, Constants.DIRECTION_UP) })
+screen.key(['down'], () => { gameState.requestPaddleAction(true, Constants.DIRECTION_DOWN) })
+screen.key(['enter'], () => { testMsg() })
 
 // Let 'er rip!
 gameState.start()
-
-const iotHubService = new IotHubService()
-iotHubService.connect()
 
 iotHubService.inboundMessages.subscribe(msg => {
   console.log(msg)
