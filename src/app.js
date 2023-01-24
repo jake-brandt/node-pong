@@ -17,7 +17,6 @@ const gameState = new GameState(screen, iotHubService)
 screen.key(['escape', 'q', 'C-c'], () => { process.exit(0) })
 screen.key(['up'], () => { gameState.requestPaddleAction(true, Constants.DIRECTION_UP) })
 screen.key(['down'], () => { gameState.requestPaddleAction(true, Constants.DIRECTION_DOWN) })
-screen.key(['enter'], () => { testMsg() })
 
 // Let 'er rip!
 gameState.start()
@@ -25,12 +24,3 @@ gameState.start()
 iotHubService.inboundMessages.subscribe(msg => {
   console.log(msg)
 })
-
-function testMsg () {
-  try {
-    iotHubService.sendMessage('{"text": "hello"}')
-  } catch (ex) {
-    console.error(ex)
-  }
-  setTimeout(testMsg, 5000)
-}
