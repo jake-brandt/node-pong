@@ -22,5 +22,5 @@ screen.key(['down'], () => { gameState.requestPaddleAction(Constants.PADDLE_PLAY
 gameState.start()
 
 iotHubService.inboundMessages.subscribe(msg => {
-  console.log(msg)
+  // console.log(msg)
 })

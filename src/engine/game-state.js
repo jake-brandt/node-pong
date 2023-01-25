@@ -7,6 +7,8 @@ const { Vector2D } = require('./primitives')
 const IotHubService = require('./iot-hub-service')
 /* eslint-enable */
 
+const TELEMETRY_UPDATE_MILLIS = 750
+
 class GameState {
   #paused = true
   #lastIterationMillis = Date.now()
@@ -130,9 +132,9 @@ class GameState {
     const jsonMessage = JSON.parse(message)
 
     if (jsonMessage.action === '+1') {
-      this.requestPaddleAction(Constants.PADDLE_CPU, Constants.DIRECTION_UP)
-    } else if (jsonMessage.action === '-1') {
       this.requestPaddleAction(Constants.PADDLE_CPU, Constants.DIRECTION_DOWN)
+    } else if (jsonMessage.action === '-1') {
+      this.requestPaddleAction(Constants.PADDLE_CPU, Constants.DIRECTION_UP)
     }
   }
 
@@ -147,7 +149,7 @@ class GameState {
       : Number.MAX_SAFE_INTEGER
 
     // Update telemetry only after a certain period of time
-    const updateTelemetry = dtMillisIoTHub && dtMillisIoTHub >= 3000
+    const updateTelemetry = dtMillisIoTHub && dtMillisIoTHub >= TELEMETRY_UPDATE_MILLIS
 
     if (updateTelemetry) {
       // Make sure we send sizes; and don't forget to transpose X/Y
@@ -195,27 +197,27 @@ class GameState {
     let ballDy = this.#velocities.ballY * dtSeconds
     let ballLeft = this.#ball.position.x + ballDx
     let ballTop = this.#ball.position.y + ballDy
-    const ballRight = ballLeft + (this.#ball.size.x - 1)
-    const ballBottom = ballTop + (this.#ball.size.y - 1)
+    const ballRight = ballLeft + this.#ball.size.x
+    const ballBottom = ballTop + this.#ball.size.y
 
     if (ballLeft < 0 && this.#velocities.ballX < 0) {
       this.#velocities.ballX = 32
       ballDx = this.#velocities.ballX * dtSeconds
       ballLeft = 0
-    } else if (ballRight > this.#field.playableWidth && this.#velocities.ballX > 0) {
+    } else if (ballRight >= this.#field.playableWidth - 1 && this.#velocities.ballX > 0) {
       this.#velocities.ballX = -32
       ballDx = this.#velocities.ballX * dtSeconds
-      ballLeft = this.#field.playableWidth - this.#ball.size.x
+      ballLeft = this.#field.playableWidth - this.#ball.size.x - 1
     }
 
     if (ballTop < 0 && this.#velocities.ballY < 0) {
       this.#velocities.ballY = -1 * this.#velocities.ballY
       ballDy = this.#velocities.ballY * dtSeconds
       ballTop = 0
-    } else if (ballBottom > this.#field.playableHeight && this.#velocities.ballY > 0) {
+    } else if (ballBottom >= this.#field.playableHeight - 1 && this.#velocities.ballY > 0) {
       this.#velocities.ballY = -1 * this.#velocities.ballY
       ballDy = this.#velocities.ballY * dtSeconds
-      ballTop = this.#field.playableHeight - this.#ball.size.y
+      ballTop = this.#field.playableHeight - this.#ball.size.y - 1
     }
 
     if (updateTelemetry) {
@@ -263,7 +265,7 @@ class GameState {
 
     let paddleDy = paddleVelocityY * dtSeconds
     let paddleTop = paddle.position.y + paddleDy
-    const paddleBottom = paddleTop + (paddle.size.y - 1)
+    const paddleBottom = paddleTop + paddle.size.y
 
     if (paddleTop < 0 && paddleVelocityY < 0) {
       paddleVelocityY = 0
@@ -272,7 +274,7 @@ class GameState {
     } else if (paddleBottom > this.#field.playableHeight && paddleVelocityY > 0) {
       paddleVelocityY = 0
       paddleDy = paddleVelocityY * dtSeconds
-      paddleTop = this.#field.playableHeight - paddle.size.y
+      paddleTop = this.#field.playableHeight - paddle.size.y - 1
     }
 
     paddle.move(new Vector2D(paddle.position.x, paddleTop))
