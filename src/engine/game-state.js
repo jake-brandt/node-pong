@@ -4,7 +4,7 @@ const Scene = require('./scene')
 const Props = require('./props')
 const Constants = require('./constants')
 const { Vector2D } = require('./primitives')
-const IotHubService = require('./iot-hub-service')
+const IotHubService = require('../services/iot-hub-service')
 /* eslint-enable */
 
 const TELEMETRY_UPDATE_MILLIS = 750

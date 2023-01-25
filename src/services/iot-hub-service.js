@@ -1,6 +1,6 @@
-const { Message, Client } = require('../../node_modules/azure-iot-device')
-const { Mqtt } = require('../../node_modules/azure-iot-device-mqtt')
-const { Subject } = require('../../node_modules/rxjs')
+const { Message, Client } = require('azure-iot-device')
+const { Mqtt } = require('azure-iot-device-mqtt')
+const { Subject } = require('rxjs')
 const iotHubConfiguration = require('../../iothub.json')
 
 class IotHubService {
