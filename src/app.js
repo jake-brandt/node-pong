@@ -15,8 +15,8 @@ const gameState = new GameState(screen, iotHubService)
 
 // Quit on Escape, q, or Control-C.
 screen.key(['escape', 'q', 'C-c'], () => { process.exit(0) })
-screen.key(['up'], () => { gameState.requestPaddleAction(true, Constants.DIRECTION_UP) })
-screen.key(['down'], () => { gameState.requestPaddleAction(true, Constants.DIRECTION_DOWN) })
+screen.key(['up'], () => { gameState.requestPaddleAction(Constants.PADDLE_PLAYER, Constants.DIRECTION_UP) })
+screen.key(['down'], () => { gameState.requestPaddleAction(Constants.PADDLE_PLAYER, Constants.DIRECTION_DOWN) })
 
 // Let 'er rip!
 gameState.start()

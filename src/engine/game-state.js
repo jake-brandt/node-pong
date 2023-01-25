@@ -72,8 +72,8 @@ class GameState {
   constructor (blessedScreen, iotHubService) {
     this.#scene = new Scene(blessedScreen.width, blessedScreen.height)
     this.#field = new Props.Field(this.#scene.screenWidth, this.#scene.screenHeight)
-    this.#paddlePlayer = new Props.Paddle(this.#field, Constants.LOCATION_RIGHT)
-    this.#paddleCpu = new Props.Paddle(this.#field, Constants.LOCATION_LEFT)
+    this.#paddlePlayer = new Props.Paddle(this.#field, Constants.LOCATION_RIGHT, 'green')
+    this.#paddleCpu = new Props.Paddle(this.#field, Constants.LOCATION_LEFT, 'blue')
     this.#ball = new Props.Ball(this.#field)
 
     this.#scene.addProp(this.#field)
@@ -130,9 +130,9 @@ class GameState {
     const jsonMessage = JSON.parse(message)
 
     if (jsonMessage.action === '+1') {
-      this.requestPaddleAction(false, Constants.DIRECTION_UP)
+      this.requestPaddleAction(Constants.PADDLE_CPU, Constants.DIRECTION_UP)
     } else if (jsonMessage.action === '-1') {
-      this.requestPaddleAction(false, Constants.DIRECTION_DOWN)
+      this.requestPaddleAction(Constants.PADDLE_CPU, Constants.DIRECTION_DOWN)
     }
   }
 
@@ -165,8 +165,8 @@ class GameState {
     }
 
     this.#stepBallPhysics(dtSeconds, updateTelemetry)
-    this.#stepPaddlePhysics(dtSeconds, true, updateTelemetry)
-    this.#stepPaddlePhysics(dtSeconds, false, updateTelemetry)
+    this.#stepPaddlePhysics(dtSeconds, Constants.PADDLE_PLAYER, updateTelemetry)
+    this.#stepPaddlePhysics(dtSeconds, Constants.PADDLE_CPU, updateTelemetry)
     this.#blessedScreen.render()
     this.#lastIterationMillis = thisIterationMillis
 
