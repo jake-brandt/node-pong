@@ -11,10 +11,14 @@ class IotHubService {
   #client = null
 
   /** @type {Subject} */
-  inboundMessages = null
+  #inboundMessages = null
+
+  get inboundMessages () {
+    return this.#inboundMessages
+  }
 
   constructor () {
-    this.inboundMessages = new Subject(null)
+    this.#inboundMessages = new Subject(null)
 
     this.#client = Client.fromConnectionString(this.#connectionString, Mqtt)
 
@@ -38,13 +42,13 @@ class IotHubService {
     this.#client.sendEvent(message, () => {})
   }
 
-  #onConnected() {
-    console.log('Client connected')
+  #onConnected () {
+    // console.log('Client connected')
   }
 
   #onDisconnected () {
     this.#client.open().catch((err) => {
-      console.error(err.message)
+      // console.error(err.message)
     })
   }
 
@@ -52,12 +56,12 @@ class IotHubService {
    * @param {ArrayBuffer} msg
    */
   #onMessageReceived (msg) {
-    this.inboundMessages.next(msg.data.toString())
+    this.#inboundMessages.next(msg.data.toString())
     this.#client.complete(msg, () => {})
   }
 
   #onError (err) {
-    console.error(err.message)
+    // console.error(err.message)
   }
 }
 

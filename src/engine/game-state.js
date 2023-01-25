@@ -72,8 +72,8 @@ class GameState {
   constructor (blessedScreen, iotHubService) {
     this.#scene = new Scene(blessedScreen.width, blessedScreen.height)
     this.#field = new Props.Field(this.#scene.screenWidth, this.#scene.screenHeight)
-    this.#paddlePlayer = new Props.Paddle(this.#field, Constants.LOCATION_LEFT)
-    this.#paddleCpu = new Props.Paddle(this.#field, Constants.LOCATION_RIGHT)
+    this.#paddlePlayer = new Props.Paddle(this.#field, Constants.LOCATION_RIGHT)
+    this.#paddleCpu = new Props.Paddle(this.#field, Constants.LOCATION_LEFT)
     this.#ball = new Props.Ball(this.#field)
 
     this.#scene.addProp(this.#field)
@@ -84,6 +84,7 @@ class GameState {
     this.#blessedScreen = blessedScreen
 
     this.#iotHubService = iotHubService
+    this.#iotHubService.inboundMessages.subscribe(this.#onIoTHubMessage.bind(this))
   }
 
   start () {
@@ -109,16 +110,29 @@ class GameState {
   }
 
   /**
-   * @param {boolean} isPlayer
+   * @param {*} paddleOwner Can be either Constants.PADDLE_PLAYER or Constants.PADDLE_CPU
    * @param {*} direction
    */
-  requestPaddleAction (isPlayer, direction) {
+  requestPaddleAction (paddleOwner, direction) {
     const vY = (direction === Constants.DIRECTION_UP) ? -64 : 64
 
-    if (isPlayer) {
+    if (paddleOwner === Constants.PADDLE_PLAYER) {
       this.#pendingActions.playerMove = vY
     } else {
       this.#pendingActions.cpuMove = vY
+    }
+  }
+
+  /**
+   * @param {string} message
+   */
+  #onIoTHubMessage (message) {
+    const jsonMessage = JSON.parse(message)
+
+    if (jsonMessage.action === '+1') {
+      this.requestPaddleAction(false, Constants.DIRECTION_UP)
+    } else if (jsonMessage.action === '-1') {
+      this.requestPaddleAction(false, Constants.DIRECTION_DOWN)
     }
   }
 
@@ -216,14 +230,14 @@ class GameState {
 
   /**
    * @param {Number} dtSeconds
-   * @param {boolean} isPlayer
+   * @param {*} paddleOwner Can be either Constants.PADDLE_PLAYER or Constants.PADDLE_CPU
    * @param {boolean} updateTelemetry
    */
-  #stepPaddlePhysics (dtSeconds, isPlayer, updateTelemetry) {
+  #stepPaddlePhysics (dtSeconds, paddleOwner, updateTelemetry) {
     /** @type {Props.Paddle} */
-    const paddle = isPlayer ? this.#paddlePlayer : this.#paddleCpu
-    let paddleVelocityY = isPlayer ? this.#velocities.playerY : this.#velocities.cpuY
-    const pendingAction = isPlayer ? this.#pendingActions.playerMove : this.#pendingActions.cpuMove
+    const paddle = paddleOwner === Constants.PADDLE_PLAYER ? this.#paddlePlayer : this.#paddleCpu
+    let paddleVelocityY = paddleOwner === Constants.PADDLE_PLAYER ? this.#velocities.playerY : this.#velocities.cpuY
+    const pendingAction = paddleOwner === Constants.PADDLE_PLAYER ? this.#pendingActions.playerMove : this.#pendingActions.cpuMove
 
     if (pendingAction === 0) {
       // Simulate friction
@@ -240,7 +254,7 @@ class GameState {
       }
     } else {
       paddleVelocityY = pendingAction
-      if (isPlayer) {
+      if (paddleOwner === Constants.PADDLE_PLAYER) {
         this.#pendingActions.playerMove = 0
       } else {
         this.#pendingActions.cpuMove = 0
@@ -267,7 +281,7 @@ class GameState {
     // Store in IoT state
     const normalizedX = (paddleTop + (paddle.size.y / 2)) / this.#field.playableHeight
 
-    if (isPlayer) {
+    if (paddleOwner === Constants.PADDLE_PLAYER) {
       this.#velocities.playerY = paddleVelocityY
       if (updateTelemetry) {
         // Remember, X/Y are transposed in our hub implemntation
